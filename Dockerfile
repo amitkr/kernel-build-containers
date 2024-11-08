@@ -1,32 +1,57 @@
-ARG UBUNTU_VERSION=default
+ARG UBUNTU_VERSION
 FROM ubuntu:${UBUNTU_VERSION} AS base
 
-RUN set -ex; \
-    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections; \
-    apt-get update; \
-    apt-get install -y -q apt-utils dialog; \
-    apt-get install -y -q sudo aptitude flex bison cpio libncurses5-dev make git exuberant-ctags sparse bc libssl-dev libelf-dev bsdmainutils dwarves xz-utils zstd gawk rsync; \
-    apt-get install -y -q python3 python3-venv; \
-    apt-get install -y -q python-is-python3 || apt-get install -y -q python
-
 ARG GCC_VERSION
-RUN set -ex; \
+ARG CLANG_VERSION
+# needed in ubuntu to persist cache, otherwise the mount won't work!
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+RUN --mount=type=cache,mode=0755,target=/var/cache/apt \
+    set -ex; \
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get update && \
+    apt-get install -y -q apt-utils dialog && \
+    apt-get install -y -q \
+        aptitude bc bison bsdmainutils build-essential cpio dvipng dwarves \
+        exuberant-ctags flex fonts-noto-cjk git graphviz imagemagick latexmk \
+        libelf-dev libncurses5-dev libncurses-dev librsvg2-bin libssl-dev make \
+        python3-sphinx python3-venv qemu-system-x86 sparse sudo \
+        texlive-lang-chinese texlive-xetex vim-tiny xz-utils zstd \
+        extlinux isolinux pxelinux syslinux syslinux-common syslinux-efi \
+        syslinux-utils ovmf ovmf-ia32 python3-virt-firmware \
+        sbuild-qemu imvirt virtme-ng u-boot-qemu  virt-top virtiofsd \
+        genisoimage mkisofs \
+        && \
     if [ "$GCC_VERSION" ]; then \
-      apt-get install -y -q gcc-${GCC_VERSION} g++-${GCC_VERSION} gcc-${GCC_VERSION}-plugin-dev \
-        gcc-${GCC_VERSION}-aarch64-linux-gnu g++-${GCC_VERSION}-aarch64-linux-gnu \
-        gcc-${GCC_VERSION}-arm-linux-gnueabi g++-${GCC_VERSION}-arm-linux-gnueabi \
-        gcc-${GCC_VERSION}-powerpc-linux-gnu g++-${GCC_VERSION}-powerpc-linux-gnu \
-        gcc-${GCC_VERSION}-powerpc64le-linux-gnu g++-${GCC_VERSION}-powerpc64le-linux-gnu; \
+      apt-get install -y -q \
+		g++-${GCC_VERSION} \
+		g++-${GCC_VERSION}-aarch64-linux-gnu \
+		g++-${GCC_VERSION}-arm-linux-gnueabi \
+		g++-${GCC_VERSION}-powerpc64le-linux-gnu \
+		g++-${GCC_VERSION}-powerpc-linux-gnu \
+		gcc-${GCC_VERSION} \
+        gcc-${GCC_VERSION}-aarch64-linux-gnu \
+        gcc-${GCC_VERSION}-arm-linux-gnueabi \
+		gcc-${GCC_VERSION}-plugin-dev \
+        gcc-${GCC_VERSION}-powerpc64le-linux-gnu \
+        gcc-${GCC_VERSION}-powerpc-linux-gnu \
+		; \
       if [ "$GCC_VERSION" != "4.9" ]; then \
-        apt-get install -y -q gcc-${GCC_VERSION}-powerpc64-linux-gnu g++-${GCC_VERSION}-powerpc64-linux-gnu; \
-        apt-get install -y -q gcc-${GCC_VERSION}-plugin-dev-aarch64-linux-gnu \
+        apt-get install -y -q \
+		  g++-${GCC_VERSION}-powerpc64-linux-gnu \
+		  gcc-${GCC_VERSION}-plugin-dev-aarch64-linux-gnu \
           gcc-${GCC_VERSION}-plugin-dev-arm-linux-gnueabi \
-          gcc-${GCC_VERSION}-plugin-dev-powerpc-linux-gnu \
           gcc-${GCC_VERSION}-plugin-dev-powerpc64le-linux-gnu \
-          gcc-${GCC_VERSION}-plugin-dev-powerpc64-linux-gnu; \
+          gcc-${GCC_VERSION}-plugin-dev-powerpc64-linux-gnu \
+          gcc-${GCC_VERSION}-plugin-dev-powerpc-linux-gnu \
+		  gcc-${GCC_VERSION}-powerpc64-linux-gnu \
+		  ;\
       fi; \
       if [ "$GCC_VERSION" != "4.9" ] && [ "$GCC_VERSION" != "5" ] && [ "$GCC_VERSION" != "6" ]; then \
-        apt-get install -y -q gcc-${GCC_VERSION}-riscv64-linux-gnu g++-${GCC_VERSION}-riscv64-linux-gnu gcc-${GCC_VERSION}-plugin-dev-riscv64-linux-gnu; \
+        apt-get install -y -q \
+		  gcc-${GCC_VERSION}-riscv64-linux-gnu \
+		  g++-${GCC_VERSION}-riscv64-linux-gnu \
+		  gcc-${GCC_VERSION}-plugin-dev-riscv64-linux-gnu \
+		  ; \
       fi; \
       update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 100; \
       update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 100; \
@@ -69,7 +94,8 @@ RUN set -ex; \
       update-alternatives --install /usr/bin/llvm-nm llvm-nm /usr/bin/llvm-nm-${CLANG_VERSION} 100; \
       update-alternatives --install /usr/bin/llvm-objdump llvm-objdump /usr/bin/llvm-objdump-${CLANG_VERSION} 100; \
       update-alternatives --install /usr/bin/llvm-readelf llvm-readelf /usr/bin/llvm-readelf-${CLANG_VERSION} 100; \
-    fi
+    fi; \
+    rm -rf /var/lib/apt/lists/*
 
 ARG UNAME
 ARG UID
@@ -85,8 +111,9 @@ RUN set -x; \
     mkdir /src; \
     chown -R ${UNAME}:${GNAME} /src; \
     mkdir /out; \
-    chown -R ${UNAME}:${GNAME} /out; \
-    echo "${UNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    chown -R ${UNAME}:${GNAME} /out ; \
+    echo "${UNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers ; \
+    echo "Set disable_coredump false" >> /etc/sudo.conf
 
 USER ${UNAME}:${GNAME}
 WORKDIR /src
@@ -101,3 +128,7 @@ RUN set -ex; \
     rm /out/test
 
 CMD ["bash"]
+
+
+
+# vim:set et:ts=2:sw=2
