@@ -3,17 +3,36 @@ FROM ubuntu:${UBUNTU_VERSION} as base
 
 ARG GCC_VERSION
 ARG CLANG_VERSION
-RUN set -ex; \
-    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections; \
-    apt-get update; \
-    apt-get install -y -q apt-utils dialog; \
-    apt-get install -y -q sudo aptitude flex bison cpio libncurses5-dev make git exuberant-ctags sparse bc libssl-dev libelf-dev bsdmainutils dwarves xz-utils zstd; \
+# needed in ubuntu to persist cache, otherwise the mount won't work!
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+RUN --mount=type=cache,mode=0755,target=/var/cache/apt \
+    set -ex; \
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get update && \
+    apt-get install -y -q apt-utils dialog && \
+    apt-get install -y -q \
+        aptitude bc bison bsdmainutils build-essential cpio dvipng dwarves \
+        exuberant-ctags flex fonts-noto-cjk git graphviz imagemagick latexmk \
+        libelf-dev libncurses5-dev libncurses-dev librsvg2-bin libssl-dev make \
+        python3-sphinx python3-venv qemu-system-x86 sparse sudo \
+        texlive-lang-chinese texlive-xetex vim-tiny xz-utils zstd \
+        extlinux isolinux pxelinux syslinux syslinux-common syslinux-efi \
+        syslinux-utils ovmf ovmf-ia32 python3-virt-firmware \
+        sbuild-qemu imvirt virtme-ng u-boot-qemu  virt-top virtiofsd \
+        genisoimage mkisofs \
+        && \
     if [ "$GCC_VERSION" ]; then \
-      apt-get install -y -q gcc-${GCC_VERSION} g++-${GCC_VERSION} gcc-${GCC_VERSION}-plugin-dev \
-        gcc-${GCC_VERSION}-aarch64-linux-gnu g++-${GCC_VERSION}-aarch64-linux-gnu \
-        gcc-${GCC_VERSION}-arm-linux-gnueabi g++-${GCC_VERSION}-arm-linux-gnueabi; \
+      apt-get install -y -q \
+        gcc-${GCC_VERSION} g++-${GCC_VERSION} \
+        gcc-${GCC_VERSION}-plugin-dev \
+        gcc-${GCC_VERSION}-aarch64-linux-gnu \
+        g++-${GCC_VERSION}-aarch64-linux-gnu \
+        gcc-${GCC_VERSION}-arm-linux-gnueabi \
+        g++-${GCC_VERSION}-arm-linux-gnueabi; \
       if [ "$GCC_VERSION" != "4.9" ]; then \
-        apt-get install -y -q gcc-${GCC_VERSION}-plugin-dev-aarch64-linux-gnu gcc-${GCC_VERSION}-plugin-dev-arm-linux-gnueabi; \
+        apt-get install -y -q \
+            gcc-${GCC_VERSION}-plugin-dev-aarch64-linux-gnu \
+            gcc-${GCC_VERSION}-plugin-dev-arm-linux-gnueabi; \
       fi; \
       update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 100; \
       update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 100; \
@@ -27,7 +46,8 @@ RUN set -ex; \
       update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${CLANG_VERSION} 100; \
       update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 100; \
       update-alternatives --install /usr/bin/lld lld /usr/bin/lld-${CLANG_VERSION} 100; \
-    fi
+    fi; \
+    rm -rf /var/lib/apt/lists/*
 
 ARG UNAME
 ARG UID
@@ -44,7 +64,8 @@ RUN set -x; \
     chown -R ${UNAME}:${GNAME} /src; \
     mkdir /out; \
     chown -R ${UNAME}:${GNAME} /out; \
-    echo "${UNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+    echo "${UNAME} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers; \
+    echo "Set disable_coredump false" >> /etc/sudo.conf
 
 USER ${UNAME}:${GNAME}
 WORKDIR /src

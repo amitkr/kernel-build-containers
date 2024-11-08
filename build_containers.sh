@@ -1,14 +1,16 @@
 #!/bin/bash
 
+CONTAINER_CLI=$(command -v podman || command -v docker || exit -1)
+
 MIN_GCC_VERSION=4
 MAX_GCC_VERSION=14
 
 MIN_CLANG_VERSION=12
-MAX_CLANG_VERSION=17
+MAX_CLANG_VERSION=18
 
 build_gcc_container() {
 	echo -e "\nBuilding a container with GCC_VERSION=$1 from UBUNTU_VERSION=$2"
-	$SUDO_CMD docker build \
+	$SUDO_CMD $CONTAINER_CLI build \
 		--build-arg GCC_VERSION=$1 \
 		--build-arg UBUNTU_VERSION=$2 \
 		--build-arg UNAME=$(id -nu) \
@@ -20,7 +22,7 @@ build_gcc_container() {
 
 build_clang_container() {
 	echo -e "\nBuilding a container with CLANG_VERSION=$1 and GCC_VERSION=$2 from UBUNTU_VERSION=$3"
-	$SUDO_CMD docker build \
+	$SUDO_CMD $CONTAINER_CLI build \
 		--build-arg CLANG_VERSION=$1 \
 		--build-arg GCC_VERSION=$2 \
 		--build-arg UBUNTU_VERSION=$3 \
@@ -139,24 +141,32 @@ build_clang_17() {
 	build_clang_container ${CLANG_VERSION} ${GCC_VERSION} ${UBUNTU_VERSION}
 }
 
+build_clang_18() {
+	CLANG_VERSION="18"
+	GCC_VERSION="14"
+	UBUNTU_VERSION="24.04"
+	build_clang_container ${CLANG_VERSION} ${GCC_VERSION} ${UBUNTU_VERSION}
+}
+
 build_all_containers() {
-	build_gcc_4
-	build_gcc_5
-	build_gcc_6
-	build_gcc_7
-	build_gcc_8
-	build_gcc_9
-	build_gcc_10
-	build_gcc_11
-	build_gcc_12
-	build_gcc_13
-	build_gcc_14
-	build_clang_12
-	build_clang_13
-	build_clang_14
-	build_clang_15
-	build_clang_16
-	build_clang_17
+# 	build_gcc_4
+# 	build_gcc_5
+# 	build_gcc_6
+# 	build_gcc_7
+# 	build_gcc_8
+# 	build_gcc_9
+# 	build_gcc_10
+# 	build_gcc_11
+# 	build_gcc_12
+# 	build_gcc_13
+# 	build_gcc_14
+# 	build_clang_12
+# 	build_clang_13
+# 	build_clang_14
+# 	build_clang_15
+# 	build_clang_16
+# 	build_clang_17
+	build_clang_18
 }
 
 # Help function to display usage information
@@ -178,15 +188,19 @@ show_help() {
 	echo "The script will exit with an error if the version is out of range or the format is incorrect"
 }
 
-groups | grep docker > /dev/null
-NEED_SUDO=$?
+echo "Using $CONTAINER_CLI ..."
 
-if [ $NEED_SUDO -eq 1 ]; then
-	echo "Hey, we gonna use sudo for running docker"
-	SUDO_CMD="sudo"
-else
-	echo "Hey, you are in docker group, sudo is not needed"
-	SUDO_CMD=""
+if [[ $CONTAINER_CLI =~ "docker" ]]; then
+	groups | grep docker > /dev/null
+	NEED_SUDO=$?
+
+	if [ $NEED_SUDO -eq 1 ]; then
+		echo "Hey, we gonna use sudo for running docker"
+		SUDO_CMD="sudo"
+	else
+		echo "Hey, you are in docker group, sudo is not needed"
+		SUDO_CMD=""
+	fi
 fi
 
 set -e
