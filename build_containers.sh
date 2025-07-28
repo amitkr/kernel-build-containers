@@ -149,44 +149,51 @@ build_clang_18() {
 }
 
 build_all_containers() {
-# 	build_gcc_4
-# 	build_gcc_5
-# 	build_gcc_6
-# 	build_gcc_7
-# 	build_gcc_8
-# 	build_gcc_9
-# 	build_gcc_10
-# 	build_gcc_11
-# 	build_gcc_12
-# 	build_gcc_13
-# 	build_gcc_14
-# 	build_clang_12
-# 	build_clang_13
-# 	build_clang_14
-# 	build_clang_15
-# 	build_clang_16
-# 	build_clang_17
+	build_gcc_4
+	build_gcc_5
+	build_gcc_6
+	build_gcc_7
+	build_gcc_8
+	build_gcc_9
+	build_gcc_10
+	build_gcc_11
+	build_gcc_12
+	build_gcc_13
+	build_gcc_14
+	build_clang_12
+	build_clang_13
+	build_clang_14
+	build_clang_15
+	build_clang_16
+	build_clang_17
 	build_clang_18
 }
 
 # Help function to display usage information
 show_help() {
-	echo ""
-	echo "Usage: $0 [compiler-version]"
-	echo
-	echo "Build containers for different compiler versions"
-	echo
-	echo "Arguments:"
-	echo "  gcc-<version>    where <version> is between $MIN_GCC_VERSION and $MAX_GCC_VERSION"
-	echo "  clang-<version>  where <version> is between $MIN_CLANG_VERSION and $MAX_CLANG_VERSION"
-	echo
-	echo "Examples:"
-	echo "  $0 gcc-8       # build \"kernel-build-container:gcc-8\""
-	echo "  $0 clang-15    # build \"kernel-build-container:clang-15\""
-	echo "  $0             # no compiler specified, build all the containers"
-	echo
-	echo "The script will exit with an error if the version is out of range or the format is incorrect"
+	cat <<EOH
+Usage: $0 [all|compiler-version]
+
+Build containers for different compiler versions
+
+Arguments:
+	gcc-<version>    where <version> is between $MIN_GCC_VERSION and $MAX_GCC_VERSION
+	clang-<version>  where <version> is between $MIN_CLANG_VERSION and $MAX_CLANG_VERSION
+
+Examples:
+	$0 gcc-8       # build "kernel-build-container:gcc-8"
+	$0 clang-15    # build "kernel-build-container:clang-15"
+	$0 all         # build all the containers
+
+The script will exit with an error if the version is out of range or the format is incorrect
+EOH
 }
+
+# Check if the user has provided an argument
+if [ $# -ne 1 ]; then
+	show_help
+	exit 0
+fi
 
 echo "Using $CONTAINER_CLI ..."
 
@@ -203,19 +210,16 @@ if [[ $CONTAINER_CLI =~ "docker" ]]; then
 	fi
 fi
 
-set -e
-
-# Check if the user has provided an argument
-if [ $# -ne 1 ]; then
+if [[ $1 = "all" ]]; then
 	echo "Building all gcc and clang containers"
 	build_all_containers
 	exit 0
 fi
 
 # Extract the compiler and version from the argument
-if [[ $1 =~ ^(gcc|clang)-([0-9]+)$ ]]; then
+if [[ $1 =~ ^(gcc|clang)(-|:|.)?([0-9]+)$ ]]; then
 	COMPILER=${BASH_REMATCH[1]}
-	VERSION=${BASH_REMATCH[2]}
+	VERSION=${BASH_REMATCH[3]}
 	# Validate GCC versions
 	if [ "$COMPILER" = "gcc" ] && [ "$VERSION" -ge $MIN_GCC_VERSION ] && [ "$VERSION" -le $MAX_GCC_VERSION ]; then
 		GCC_VERSION=$VERSION
