@@ -202,10 +202,10 @@ if [[ $CONTAINER_CLI =~ "docker" ]]; then
 	NEED_SUDO=$?
 
 	if [ $NEED_SUDO -eq 1 ]; then
-		echo "Hey, we gonna use sudo for running docker"
+		echo "We'll use sudo for running docker"
 		SUDO_CMD="sudo"
 	else
-		echo "Hey, you are in docker group, sudo is not needed"
+		echo "You are in docker group, sudo is not needed"
 		SUDO_CMD=""
 	fi
 fi
@@ -242,8 +242,10 @@ fi
 
 if [ -n "$GCC_VERSION" ]; then
 	build_gcc_$GCC_VERSION
-fi
-
-if [ -n "$CLANG_VERSION" ]; then
+elif [ -n "$CLANG_VERSION" ]; then
 	build_clang_$CLANG_VERSION
+else
+	echo "Error: No valid compiler version specified."
+	show_help
+	exit 1
 fi
