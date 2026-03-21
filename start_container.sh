@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]]; do
 	-n | --non-interactive)
 		INTERACTIVE=""
 		CIDFILE="--cidfile $OUT/container.id"
-		echo "Gonna run the container in NON-interactive mode"
+		echo "Will run the container in NON-interactive mode"
 		shift
 		;;
 	-e | --env)
@@ -97,7 +97,7 @@ RUNTIME_TEST_OUTPUT="$($RUNTIME ps 2>&1)"
 set -e
 
 if echo "$RUNTIME_TEST_OUTPUT" | grep -qi "permission denied"; then
-	echo "Hey, we gonna use sudo for running the container"
+	echo "We will use sudo for running the container"
 	SUDO_CMD="sudo"
 fi
 
@@ -108,16 +108,16 @@ if [ ! -z "$ENV" ]; then
 fi
 
 if [ ! -z "$INTERACTIVE" ]; then
-	echo "Gonna run the container in interactive mode"
+	echo "Will run the container in interactive mode"
 fi
 
 echo "Mount source code directory \"$SRC\" at \"/src\""
 echo "Mount build output directory \"$OUT\" at \"/out\""
 
 if [ $# -gt 0 ]; then
-	echo -e "Gonna run command \"$@\"\n"
+	echo -e "Running command \"$@\"\n"
 else
-	echo -e "Gonna run bash\n"
+	echo -e "Running bash\n"
 fi
 
 # Z for setting SELinux label

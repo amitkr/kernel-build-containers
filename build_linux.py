@@ -67,9 +67,9 @@ def finish_building_kernel(runtime, out_dir, interrupt):
     print(f'The finish_container.sh script returned {return_code}')
 
 
-def build_kernel(runtime, arch, kconfig, src, out, compiler, make_args):
+def build_kernel(args, runtime, arch, kconfig, src, out, compiler, make_args):
     if kconfig:
-        assert(out), 'Ouch, the output directory is required for building with the kconfig file'
+        assert(out), 'Output directory is required for building with the kconfig file'
         kconfig_name_parts = os.path.splitext(os.path.basename(kconfig))
         kconfig_name = kconfig_name_parts[0].lstrip('.') # handling the corner case: "-k .config"
         out_subdir = out + '/' + kconfig_name + NAME_DELIMITER + arch + NAME_DELIMITER + compiler
@@ -107,36 +107,42 @@ def build_kernel(runtime, arch, kconfig, src, out, compiler, make_args):
                            compiler, src, out_subdir, '--' + runtime]
 
     noninteractive = True
-    if 'menuconfig' in make_args:
+
+    if args.shell:
+        start_container_cmd.extend(['--', 'bash'])
         noninteractive = False
-
-    if noninteractive:
-        start_container_cmd.extend(['-n']) # start container in the non-interactive mode
-        build_log = out_subdir + '/build_log.txt'
-        print(f'Going to write the build log to "{build_log}"')
-        build_log_fd = open(build_log, "w", encoding='utf-8')
-        stdout_destination = subprocess.PIPE
-    else:
-        print('Going to run the container in the interactive mode (without build log)')
         stdout_destination = None
-
-    start_container_cmd.extend(['--', 'make'])
-
-    if out_subdir != src:
-        start_container_cmd.append('O=../out/')
     else:
-        print('Going to build the kernel in-place (without \'O=\')')
+        if 'menuconfig' in make_args:
+            noninteractive = False
 
-    if compiler.startswith('clang'):
-        print('Add arguments for compiling with clang: CC=clang')
-        start_container_cmd.extend(['CC=clang'])
+        if noninteractive:
+            start_container_cmd.extend(['-n']) # start container in the non-interactive mode
+            build_log = out_subdir + '/build_log.txt'
+            print(f'Going to write the build log to "{build_log}"')
+            build_log_fd = open(build_log, "w", encoding='utf-8')
+            stdout_destination = subprocess.PIPE
+        else:
+            print('Going to run the container in the interactive mode (without build log)')
+            stdout_destination = None
 
-    cross_compile_args = get_cross_compile_args(arch)
-    if cross_compile_args:
-        print(f'Add arguments for cross-compilation: {" ".join(cross_compile_args)}')
-    start_container_cmd.extend(cross_compile_args)
+        start_container_cmd.extend(['--', 'make'])
 
-    start_container_cmd.extend(make_args)
+        if out_subdir != src:
+            start_container_cmd.append('O=../out/')
+        else:
+            print('Going to build the kernel in-place (without \'O=\')')
+
+        if compiler.startswith('clang'):
+            print('Add arguments for compiling with clang: CC=clang')
+            start_container_cmd.extend(['CC=clang'])
+
+        cross_compile_args = get_cross_compile_args(arch)
+        if cross_compile_args:
+            print(f'Add arguments for cross-compilation: {" ".join(cross_compile_args)}')
+        start_container_cmd.extend(cross_compile_args)
+
+        start_container_cmd.extend(make_args)
 
     print(f'Run the container: {" ".join(start_container_cmd)}')
     interrupt = False
@@ -184,6 +190,8 @@ def main():
                         help='for running `make` in quiet mode')
     parser.add_argument('-t', '--single-thread', action='store_true',
                         help='for running `make` in single-threaded mode (multi-threaded by default)')
+    parser.add_argument('-S', '--shell', action='store_true',
+                        help='start a shell in container')
     parser.add_argument('make_args', metavar='...', nargs=argparse.REMAINDER,
                         help='additional arguments for \'make\', can be separated by -- delimiter')
     args = parser.parse_args()
@@ -249,7 +257,7 @@ def main():
     else:
         print('Going to run \'make\' in single-threaded mode')
 
-    build_kernel(runtime, args.arch, args.kconfig, args.src, args.out, args.compiler, make_args)
+    build_kernel(args, runtime, args.arch, args.kconfig, args.src, args.out, args.compiler, make_args)
 
     print('[+] Done, see the results')
 
